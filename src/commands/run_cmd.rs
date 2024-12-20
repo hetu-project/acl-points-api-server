@@ -1,7 +1,9 @@
 use crate::handlers::auth_token;
 use crate::handlers::callback_handler;
+use crate::handlers::get_user_info;
 use crate::handlers::healthcheck;
 use crate::jwt::jwt_auth;
+use crate::jwt::jwt_handler;
 use crate::server;
 use async_trait::async_trait;
 use axum::{
@@ -54,12 +56,14 @@ impl CommandHandler for RunCommand {
             .allow_headers(Any);
 
         let auth_router = Router::new()
-            .route("/api/v1/ping", get(|| async { "pong" }))
+            .route("/api/v1/userinfo", get(handler))
+            .route_layer(axum::middleware::from_fn(auth_test))
             .layer(ValidateRequestHeaderLayer::custom(auth));
 
         let app = Router::new()
             .route("/", get(serve_index))
-            .route("/api/v1/userinfo", get(healthcheck))
+            .route("/api/v1/ping", get(|| async { "pong" }))
+            .route("/api/v1/userinfo2", get(get_user_info))
             .route("/api/v1/healthcheck", get(healthcheck))
             .route("/auth/callback", get(callback_handler))
             .route("/auth/token", post(auth_token))
@@ -128,4 +132,57 @@ pub async fn handle_error(error: BoxError) -> impl IntoResponse {
 async fn serve_index() -> axum::response::Html<String> {
     let content = std::fs::read_to_string("static/index.html").expect("Failed to read index.html");
     axum::response::Html(content)
+}
+
+use tokio::task_local;
+
+task_local! {
+    pub static USER: jwt_handler::Claims;
+}
+
+async fn auth_test(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, StatusCode> {
+    let auth_header = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|header| header.to_str().ok())
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    println!("---erer_--{:?}", auth_header);
+
+    let jwtt = jwt_handler::JwtHandler {
+        secret: "my_secret_key".to_string(),
+    };
+
+    if let Ok(current_user) = jwtt.decode_token(
+        auth_header
+            .to_string()
+            .strip_prefix("Bearer ")
+            .unwrap_or(&auth_header)
+            .to_string(),
+    ) {
+        // State is setup here in the middleware
+        Ok(USER.scope(current_user, next.run(req)).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
+
+struct UserResponse;
+
+impl IntoResponse for UserResponse {
+    fn into_response(self) -> axum::response::Response {
+        // State is accessed here in the IntoResponse implementation
+        let current_user = USER.with(|u| u.clone());
+        (
+            StatusCode::OK,
+            axum::Json(serde_json::json!({"name": current_user.name,"email": current_user.email})),
+        )
+            .into_response()
+    }
+}
+
+async fn handler() -> UserResponse {
+    UserResponse
 }

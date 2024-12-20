@@ -9,7 +9,7 @@ pub struct JwtHandler {
 }
 
 impl JwtHandler {
-    pub fn create_token(&self, user_name: &str) -> String {
+    pub fn create_token(&self, user_name: &str, user_email: &str) -> String {
         let expiration = Utc::now()
             .checked_add_signed(Duration::minutes(60))
             .expect("valid timestamp")
@@ -18,6 +18,8 @@ impl JwtHandler {
         let claims = Claims {
             sub: user_name.to_string(),
             exp: expiration,
+            name: user_name.into(),
+            email: user_email.into(),
         };
 
         let header = Header::default();
@@ -34,8 +36,10 @@ impl JwtHandler {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
     pub exp: usize,
+    pub name: String,
+    pub email: String,
 }

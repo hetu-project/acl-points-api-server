@@ -29,7 +29,10 @@ impl<B> ValidateRequest<B> for Authorization {
                 )
             })
             .map(|result| match result {
-                Ok(_) => Ok(()),
+                Ok(res) => {
+                    println!("res:{:?}", res);
+                    Ok(())
+                }
                 Err(e) => {
                     println!("decode token error: {:?}", e);
                     if e.kind().eq(&ErrorKind::ExpiredSignature) {

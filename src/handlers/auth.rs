@@ -75,7 +75,7 @@ pub async fn callback_handler(
             println!("{:?}", user_info);
 
             let secret = state.0.read().await.jwt_handler.clone();
-            let token: String = secret.create_token(&user_info.name);
+            let token: String = secret.create_token(&user_info.name, &user_info.email);
 
             return Json(serde_json::json!({
                 "code": 200,
