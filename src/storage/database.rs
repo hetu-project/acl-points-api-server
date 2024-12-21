@@ -2,8 +2,7 @@ use super::entities::prelude::{
     LastUpdateActiveModel, LastUpdateEntity, NostrEventActiveModel, NostrEventColumn,
     NostrEventEntity,
 };
-use crate::config::DatabaseConfig;
-use crate::error;
+use crate::common::{config::DatabaseConfig, error};
 use chrono;
 use sea_orm::*;
 use std::{sync::Arc, time::Duration};

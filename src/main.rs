@@ -1,12 +1,5 @@
-mod commands;
-mod config;
-mod consts;
-mod error;
-mod handlers;
-mod jwt;
-mod server;
-mod storage;
-
+use app_service::commands;
+use app_service::common::consts;
 use logging;
 
 #[tokio::main]

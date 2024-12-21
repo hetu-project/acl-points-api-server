@@ -1,9 +1,6 @@
-use crate::config::Config;
-use crate::jwt::jwt_handler;
-use crate::storage;
+use crate::{common::config::Config, jwt::jwt_handler, storage};
 use oauth2::basic::BasicClient;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]

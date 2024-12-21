@@ -1,3 +1,10 @@
+///
+///         let auth = jwt_auth::Authorization {
+///             jwt_handler: share_state.0.read().await.jwt_handler.clone(),
+///         };
+///
+/// .layer(ValidateRequestHeaderLayer::custom(auth));
+///
 use super::jwt_handler::JwtHandler;
 use axum::body::Body;
 use axum::extract::Request;
@@ -14,7 +21,6 @@ pub struct Authorization {
 impl<B> ValidateRequest<B> for Authorization {
     type ResponseBody = Body;
     fn validate(&mut self, request: &mut Request<B>) -> Result<(), Response<Self::ResponseBody>> {
-        println!("hello------");
         request
             .headers()
             .get(header::AUTHORIZATION)

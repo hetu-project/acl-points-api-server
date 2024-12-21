@@ -1,5 +1,5 @@
 use super::message::*;
-use crate::consts;
+use crate::common::consts;
 use crate::server::app::SharedState;
 use axum::{debug_handler, extract::State, Json};
 use oauth2::{
