@@ -1,4 +1,4 @@
-use crate::storage::migration::Migrator;
+use crate::database::migration::Migrator;
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
 use cli::CommandHandler;

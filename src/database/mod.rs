@@ -1,9 +1,12 @@
-use super::entities::prelude::{
+pub mod entities;
+pub mod migration;
+
+use crate::common::{config::DatabaseConfig, error::AppResult};
+use chrono;
+use entities::prelude::{
     LastUpdateActiveModel, LastUpdateEntity, NostrEventActiveModel, NostrEventColumn,
     NostrEventEntity,
 };
-use crate::common::{config::DatabaseConfig, error};
-use chrono;
 use sea_orm::*;
 use std::{sync::Arc, time::Duration};
 
@@ -14,12 +17,14 @@ pub struct Storage {
 
 impl Storage {
     pub async fn new(config: DatabaseConfig) -> Self {
-        //let url = format!("{}/{}", config.url, config.db_name);
         let mut opt = ConnectOptions::new(&config.db_url);
         opt.max_connections(config.max_connect_pool)
             .min_connections(config.min_connect_pool)
             .connect_timeout(Duration::from_secs(config.connect_timeout))
             .acquire_timeout(Duration::from_secs(config.acquire_timeout));
+
+        //let manager = ConnectionManager::<PgConnection>::new(database_url);
+        //let pg = Pool::builder().build(manager).expect("Failed to create pool.");
 
         let db = Database::connect(opt.clone())
             .await
@@ -28,7 +33,7 @@ impl Storage {
         Self { conn: Arc::new(db) }
     }
 
-    pub async fn get_last_update(&self, init: u64) -> error::Result<u64> {
+    pub async fn get_last_update(&self, init: u64) -> AppResult<u64> {
         match LastUpdateEntity::find().one(self.conn.as_ref()).await? {
             Some(last) => Ok(last.last_update as u64),
             None => {
@@ -43,7 +48,7 @@ impl Storage {
         }
     }
 
-    pub async fn update_last_update(&self, last: u64) -> error::Result<()> {
+    pub async fn update_last_update(&self, last: u64) -> AppResult<()> {
         if let Some(mut last_update) = LastUpdateEntity::find()
             .one(self.conn.as_ref())
             .await?
@@ -71,7 +76,7 @@ impl Storage {
         }
     }
 
-    pub async fn add_new_event(&self, id: String) -> error::Result<()> {
+    pub async fn add_new_event(&self, id: String) -> AppResult<()> {
         let new_event_id = NostrEventActiveModel {
             event_id: Set(id),
             updated_at: Set(chrono::Utc::now().into()),

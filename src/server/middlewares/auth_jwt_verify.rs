@@ -30,9 +30,9 @@
 //! ```
 
 use super::AuthToken;
-use crate::server::app::SharedState;
+use crate::app::SharedState;
 use axum::{
-    body::Body, extract::Extension, http::Request, http::StatusCode, middleware::Next,
+    body::Body, extract::State, http::Request, http::StatusCode, middleware::Next,
     response::Response,
 };
 use jsonwebtoken::errors::ErrorKind;
@@ -41,7 +41,7 @@ use tracing;
 /// Middleware for authenticating requests using JWT tokens.
 ///
 /// # Arguments
-/// - `Extension(state)`: Shared application state, which contains the JWT handler.
+/// - `State(state)`: Shared application state, which contains the JWT handler.
 /// - `AuthToken(user)`: Extracted JWT token from the `Authorization` header of the request.
 /// - `req`: The incoming HTTP request.
 /// - `next`: The next middleware or handler in the processing pipeline.
@@ -50,12 +50,12 @@ use tracing;
 /// - On successful authentication, forwards the request to the next handler and returns its response.
 /// - On authentication failure, returns an appropriate `StatusCode` error response.
 pub async fn auth_middleware(
-    Extension(state): Extension<SharedState>,
+    State(state): State<SharedState>,
     AuthToken(user): AuthToken,
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let client = state.0.read().await.jwt_handler.clone();
+    let client = state.jwt_handler.clone();
 
     // Decode and verify the provided JWT token.
     match client.decode_token(user) {

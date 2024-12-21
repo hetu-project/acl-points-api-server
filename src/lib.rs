@@ -1,7 +1,6 @@
+pub mod app;
 pub mod commands;
 pub mod common;
-pub mod handlers;
-pub mod jwt;
-pub mod middlewares;
+pub mod database;
+pub mod helpers;
 pub mod server;
-pub mod storage;
