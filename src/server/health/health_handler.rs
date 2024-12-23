@@ -1,10 +1,6 @@
-use crate::server::message::Response;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, http::StatusCode};
 
 #[debug_handler]
-pub async fn healthcheck() -> Json<Response<String>> {
-    Json(Response {
-        code: 200,
-        result: "healthy".to_string(),
-    })
+pub async fn healthcheck() -> StatusCode {
+    StatusCode::OK
 }

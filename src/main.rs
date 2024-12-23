@@ -1,10 +1,11 @@
 use app_service::commands;
-use app_service::common::consts;
 use logging;
+
+pub const LOG_PATH: &str = "logs";
 
 #[tokio::main]
 async fn main() {
-    logging::logging_init(consts::LOG_PATH).unwrap();
+    logging::logging_init(LOG_PATH).unwrap();
 
     commands::run_command().await;
 }
