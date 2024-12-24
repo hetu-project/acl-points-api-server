@@ -26,7 +26,8 @@ impl Storage {
 
         let mut active_user = user.into_active_model();
 
-        active_user.id = Set(Uuid::new_v4().to_string());
+        active_user.id = NotSet;
+        active_user.uid = Set(Uuid::new_v4().to_string());
         active_user.created_at = Set(Some(chrono::Utc::now()));
         active_user.updated_at = Set(Some(chrono::Utc::now()));
 
@@ -68,6 +69,7 @@ impl Storage {
     }
 
     pub async fn get_user_by_address(&self, user_address: &str) -> AppResult<users::Model> {
+        //TODO translate address to lowercase
         match Users::find()
             .filter(users::Column::Email.eq(user_address))
             .one(self.conn.as_ref())
@@ -86,8 +88,8 @@ impl Storage {
         user_email: &str,
         user_addr: &str,
     ) -> AppResult<()> {
-        //TODO check address uniq
-        match self.is_user_exists_by_address(user_email).await? {
+        //TODO translate address to lowercase
+        match self.is_user_exists_by_address(user_addr).await? {
             true => {
                 return Err(AppError::UserExisted(format!(
                     "address: {} already exists",
@@ -97,23 +99,24 @@ impl Storage {
             false => (),
         }
 
-        if let Some(mut user) = Users::find()
+        if let Some(user) = Users::find()
             .filter(users::Column::Email.eq(user_email))
             .one(self.conn.as_ref())
             .await?
-            .map(|l| l.into_active_model())
+        //.map(|l| l.into_active_model())
         {
-            if user.address.into_value().is_some() {
+            if user.address.is_some() {
                 return Err(AppError::UserExisted(format!(
                     "User address: {} already set",
                     user_addr
                 )));
             }
+            let mut active_user = user.into_active_model();
 
-            user.address = Set(Some(user_addr.to_string()));
-            user.updated_at = Set(chrono::Utc::now().into());
+            active_user.address = Set(Some(user_addr.to_string()));
+            active_user.updated_at = Set(chrono::Utc::now().into());
 
-            user.update(self.conn.as_ref()).await?;
+            active_user.update(self.conn.as_ref()).await?;
         }
 
         Ok(())

@@ -23,7 +23,8 @@ pub struct UserInfo {
 impl Into<users::Model> for UserInfo {
     fn into(self) -> users::Model {
         users::Model {
-            id: "".to_string(),
+            id: Default::default(),
+            uid: "".to_string(),
             name: self.name,
             email: self.email,
             address: None,
@@ -40,21 +41,27 @@ impl Into<users::Model> for UserInfo {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserResponse {
-    pub id: String,
+    pub uid: String,
     pub name: String,
     pub email: String,
     pub photo: String,
     pub address: Option<String>,
+    pub invite_code: String,
+    pub points: u64,
+    pub invite_total: u32,
 }
 
 impl From<users::Model> for UserResponse {
     fn from(user: users::Model) -> Self {
         Self {
-            id: user.id,
+            uid: user.uid,
             name: user.name,
             email: user.email,
             photo: user.photo,
             address: user.address,
+            invite_code: "123456".to_string(),
+            points: 123,
+            invite_total: 45,
         }
     }
 }

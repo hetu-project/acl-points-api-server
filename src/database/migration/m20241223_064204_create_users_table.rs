@@ -13,11 +13,12 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Users::Id)
-                            .string()
+                            .integer()
                             .not_null()
-                            .unique_key()
+                            .auto_increment()
                             .primary_key(),
                     )
+                    .col(ColumnDef::new(Users::Uid).string().not_null().unique_key())
                     .col(ColumnDef::new(Users::Name).string().not_null())
                     .col(
                         ColumnDef::new(Users::Email)
@@ -57,6 +58,7 @@ impl MigrationTrait for Migration {
 pub enum Users {
     Table,
     Id,
+    Uid,
     Name,
     Email,
     Address,
