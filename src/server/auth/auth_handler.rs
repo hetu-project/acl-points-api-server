@@ -1,176 +1,110 @@
-use crate::app::SharedState;
-use crate::common::consts;
-use crate::server::message::*;
+use super::auth_message::*;
+use crate::{
+    app::SharedState,
+    common::{
+        consts,
+        error::{AppError, AppResult},
+    },
+    server::message::*,
+};
 use axum::{
     debug_handler,
     extract::{Query, State},
     Json,
 };
-//use oauth2::{
-//    basic::BasicClient,  AuthUrl,  ClientId,
-//    ClientSecret,  TokenUrl,
-//};
 use oauth2::{reqwest::async_http_client, AuthorizationCode, RedirectUrl, TokenResponse};
 use reqwest::Client;
-
-//const CLIENT_ID: &str = "";
-//const CLIENT_SECRET: &str = "";
-////const REDIRECT_URI: &str = "https://nftkash.xyz/auth/callback";
-//
-//fn oauth_client(redirect_uri: String) -> BasicClient {
-//    BasicClient::new(
-//        ClientId::new(CLIENT_ID.to_string()),
-//        Some(ClientSecret::new(CLIENT_SECRET.to_string())),
-//        AuthUrl::new(consts::AUTH_ENDPOINT.to_string()).expect("Invalid auth URL"),
-//        Some(TokenUrl::new(consts::TOKEN_ENDPOINT.to_string()).expect("Invalid token URL")),
-//    )
-//    .set_redirect_uri(RedirectUrl::new(redirect_uri).expect("Invalid redirect URL"))
-//}
 
 #[debug_handler]
 pub async fn auth_token(
     State(state): State<SharedState>,
-    //Query(params): Query<OAuthCallbackParams>,
     Json(params): Json<OAuthParams>,
-) -> Json<serde_json::Value> {
-    tracing::info!("params: {:?}", params);
+) -> AppResult<Json<serde_json::Value>> {
+    tracing::info!("[auth_token] get params: {:?}", params);
 
-    //let client = oauth_client(params.redirect_uri);
+    params.validate_items()?;
 
-    let client = state.oauth.clone().set_redirect_uri(
-        RedirectUrl::new(state.config.auth.redirect_url.clone()).expect("Invalid redirect URL"),
-    );
+    let client = state
+        .oauth
+        .clone()
+        .set_redirect_uri(RedirectUrl::new(state.config.auth.redirect_url.clone())?); //TODO from params?
 
-    let token_result = client
-        .exchange_code(AuthorizationCode::new(params.code))
+    let token = client
+        .exchange_code(AuthorizationCode::new(params.code.unwrap()))
         .request_async(async_http_client)
-        .await;
-    tracing::info!("----{:?}", token_result);
+        .await
+        .map_err(|_e| AppError::CustomError("failed to exchange code".to_string()))?;
 
-    match token_result {
-        Ok(token) => {
-            let access_token = token.access_token().secret();
-            tracing::info!("Access Token: {:?}", access_token);
+    tracing::info!("[auth_token] exchange code get: {:?}", token);
 
-            //Json(serde_json::json!({
-            //    "access_token": access_token,
-            //    "message": "Successfully authenticated"
-            //}))
-            let client = Client::new();
+    let access_token = token.access_token().secret();
 
-            let user_info_response = client
-                .get(consts::USERINFO_ENDPOINT)
-                .bearer_auth(&access_token)
-                .send()
-                .await
-                .expect("Failed to get user info");
+    tracing::info!("[auth_token] Access Token: {:?}", access_token);
 
-            if !user_info_response.status().is_success() {
-                println!("{:?}", "abc");
-            }
+    let client = Client::new();
 
-            let user_info: UserInfo = user_info_response
-                .json()
-                .await
-                .expect("Failed to parse user info");
-            println!("{:?}", user_info);
+    let user_info_response = client
+        .get(consts::USERINFO_ENDPOINT)
+        .bearer_auth(&access_token)
+        .send()
+        .await
+        .map_err(|_e| AppError::CustomError("failed to get user info".to_string()))?;
 
-            let secret = state.jwt_handler.clone();
-            let token: String = secret.create_token(&user_info.name, &user_info.email);
-
-            return Json(serde_json::json!({
-                "code": 200,
-                "result": {
-                    "access_token": token,
-                    //"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-                    "user_info": {
-                        "name" : user_info.name,
-                        "email" : user_info.email
-                    }
-                }
-            }));
-        }
-        Err(err) => {
-            eprintln!("Token exchange failed: {}", err);
-            //(StatusCode::BAD_REQUEST, "Failed to authenticate").into_response()
-            return Json(serde_json::json!({
-                "code": 30001,
-                "result": {
-                    "error": "some error",
-                }
-            }));
-        }
+    if !user_info_response.status().is_success() {
+        return Err(AppError::CustomError(
+            "non user info in response".to_string(),
+        ));
     }
+
+    let user_info: UserInfo = user_info_response
+        .json()
+        .await
+        .expect("Failed to parse user info");
+
+    tracing::info!("[auth_token] get user info: {:?}", user_info);
+
+    let created_user = match state.store.create_user(user_info.clone().into()).await {
+        Ok(u) => u,
+        Err(AppError::UserExisted(_)) => {
+            tracing::info!("user has already existed, log in");
+            state
+                .store
+                .get_user_by_email(user_info.email.as_ref())
+                .await?
+        }
+        Err(e) => return Err(e),
+    };
+
+    tracing::info!("[auth_token] database  user info: {:?}", created_user);
+
+    let secret = state.jwt_handler.clone();
+    let token: String = secret.create_token(&user_info.name, &user_info.email);
+
+    tracing::info!("[auth_token] jwt token: {:?}", token);
+
+    return Ok(Json(serde_json::json!({
+        "result": {
+            "access_token": token,
+            "user_info": UserResponse::from(created_user)
+         }
+    })));
 }
 
 #[debug_handler]
 pub async fn callback_handler(
-    State(state): State<SharedState>,
+    State(_state): State<SharedState>,
     Query(params): Query<OAuthCallbackParams>,
 ) -> Json<serde_json::Value> {
     tracing::info!("auth params: {:?}", params);
 
-    let client = state.oauth.clone().set_redirect_uri(
-        RedirectUrl::new(state.config.auth.redirect_url.clone()).expect("Invalid redirect URL"),
-    );
-
-    let token_result = client
-        .exchange_code(AuthorizationCode::new(params.code))
-        .request_async(async_http_client)
-        .await;
-    tracing::info!("----{:?}", token_result);
-
-    match token_result {
-        Ok(token) => {
-            let access_token = token.access_token().secret();
-            tracing::info!("Access Token: {:?}", access_token);
-
-            //Json(serde_json::json!({
-            //    "access_token": access_token,
-            //    "message": "Successfully authenticated"
-            //}))
-            let client = Client::new();
-
-            let user_info_response = client
-                .get(consts::USERINFO_ENDPOINT)
-                .bearer_auth(&access_token)
-                .send()
-                .await
-                .expect("Failed to get user info");
-
-            if !user_info_response.status().is_success() {
-                println!("{:?}", "abc");
-            }
-
-            let user_info: UserInfo = user_info_response
-                .json()
-                .await
-                .expect("Failed to parse user info");
-            println!("{:?}", user_info);
-
-            let secret = state.jwt_handler.clone();
-            let token: String = secret.create_token(&user_info.name, &user_info.email);
-
-            return Json(serde_json::json!({
-                "code": 200,
-                "result": {
-                    "access_token": token,
-                    "user_info": {
-                        "name" : user_info.name,
-                        "email" : user_info.email
-                    }
-                }
-            }));
-        }
-        Err(err) => {
-            eprintln!("Token exchange failed: {}", err);
-            //(StatusCode::BAD_REQUEST, "Failed to authenticate").into_response()
-            return Json(serde_json::json!({
-                "code": 30001,
-                "result": {
-                    "error": "some error",
-                }
-            }));
-        }
-    }
+    return Json(serde_json::json!({
+        "result": {
+            "code": params.code,
+            "scope":params.scope,
+            "authuser": params.authuser,
+            "prompt": params.prompt ,
+            "state": "authorization_code",
+            "redirect_uri": "http://127.0.0.1:8080/auth/callback"
+         }
+    }));
 }

@@ -6,6 +6,7 @@ use axum::{
 use error_macros::ErrorWithCode;
 use std::path::PathBuf;
 use thiserror::Error;
+use validator::ValidationErrors;
 
 pub type AppResult<T> = std::result::Result<T, AppError>;
 
@@ -29,6 +30,22 @@ pub enum AppError {
     #[error(transparent)]
     #[code(30001)]
     SeaOrmDBError(#[from] sea_orm::DbErr),
+
+    #[error(transparent)]
+    #[code(30001)]
+    ValidationError(#[from] ValidationErrors),
+
+    #[error("url parse error: {0}")]
+    UrlParseError(#[from] url::ParseError),
+
+    #[error("user existed: {0}")]
+    UserExisted(String),
+
+    #[error("user not existed: {0}")]
+    UserUnExisted(String),
+
+    #[error("{0}")]
+    CustomError(String),
 }
 
 impl IntoResponse for AppError {
@@ -39,6 +56,11 @@ impl IntoResponse for AppError {
             Self::ConfigMissing(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::SeaOrmDBError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::CustomError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::UrlParseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::UserExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::UserUnExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
         };
 
         (status, Json(serde_json::json!({"error":self.to_string()}))).into_response()

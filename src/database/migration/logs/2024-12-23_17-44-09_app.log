@@ -1,0 +1,1 @@
+2024-12-23T09:44:14.349614Z  WARN sqlx::query: 126: slow statement: execution time exceeded alert threshold summary="DROP DATABASE IF EXISTS …" db.statement="\n\nDROP DATABASE IF EXISTS \"plugin\";\n" rows_affected=0 rows_returned=0 elapsed=5.053460167s elapsed_secs=5.053460167 slow_threshold=1s

@@ -1,12 +1,8 @@
 pub mod entities;
 pub mod migration;
+pub mod services;
 
-use crate::common::{config::DatabaseConfig, error::AppResult};
-use chrono;
-use entities::prelude::{
-    LastUpdateActiveModel, LastUpdateEntity, NostrEventActiveModel, NostrEventColumn,
-    NostrEventEntity,
-};
+use crate::common::config::DatabaseConfig;
 use sea_orm::*;
 use std::{sync::Arc, time::Duration};
 
@@ -23,68 +19,10 @@ impl Storage {
             .connect_timeout(Duration::from_secs(config.connect_timeout))
             .acquire_timeout(Duration::from_secs(config.acquire_timeout));
 
-        //let manager = ConnectionManager::<PgConnection>::new(database_url);
-        //let pg = Pool::builder().build(manager).expect("Failed to create pool.");
-
         let db = Database::connect(opt.clone())
             .await
             .expect("failed to connect to database");
 
         Self { conn: Arc::new(db) }
-    }
-
-    pub async fn get_last_update(&self, init: u64) -> AppResult<u64> {
-        match LastUpdateEntity::find().one(self.conn.as_ref()).await? {
-            Some(last) => Ok(last.last_update as u64),
-            None => {
-                let new_last_update = LastUpdateActiveModel {
-                    last_update: Set(init as i64),
-                    updated_at: Set(chrono::Utc::now().into()),
-                    ..Default::default()
-                };
-                new_last_update.insert(self.conn.as_ref()).await?;
-                Ok(init)
-            }
-        }
-    }
-
-    pub async fn update_last_update(&self, last: u64) -> AppResult<()> {
-        if let Some(mut last_update) = LastUpdateEntity::find()
-            .one(self.conn.as_ref())
-            .await?
-            .map(|l| l.into_active_model())
-        {
-            last_update.last_update = Set(last as i64);
-            last_update.updated_at = Set(chrono::Utc::now().into());
-
-            last_update.update(self.conn.as_ref()).await?;
-        }
-
-        Ok(())
-    }
-
-    pub async fn is_event_existed(&self, id: String) -> Option<()> {
-        if NostrEventEntity::find()
-            .filter(NostrEventColumn::EventId.eq(id))
-            .one(self.conn.as_ref())
-            .await
-            .is_ok()
-        {
-            Some(())
-        } else {
-            None
-        }
-    }
-
-    pub async fn add_new_event(&self, id: String) -> AppResult<()> {
-        let new_event_id = NostrEventActiveModel {
-            event_id: Set(id),
-            updated_at: Set(chrono::Utc::now().into()),
-            ..Default::default()
-        };
-
-        new_event_id.insert(self.conn.as_ref()).await?;
-
-        Ok(())
     }
 }

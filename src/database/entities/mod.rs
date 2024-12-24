@@ -2,5 +2,4 @@
 
 pub mod prelude;
 
-pub mod last_update;
-pub mod nostr_event;
+pub mod users;

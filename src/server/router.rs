@@ -1,11 +1,6 @@
 use super::{auth::auth_router, health::health_router, user::user_router, webset::index_router};
 use crate::{app::SharedState, server::middlewares};
-use axum::{
-    error_handling::HandleErrorLayer,
-    http::Method,
-    routing::{get, post},
-    Router,
-};
+use axum::{error_handling::HandleErrorLayer, http::Method, Router};
 use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_http::{
