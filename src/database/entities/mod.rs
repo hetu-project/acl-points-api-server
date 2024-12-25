@@ -6,4 +6,5 @@ pub mod invites;
 pub mod points;
 pub mod rewards;
 pub mod rewards_pool;
+pub mod tasks;
 pub mod users;

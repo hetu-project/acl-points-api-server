@@ -4,4 +4,5 @@ pub use super::invites::Entity as Invites;
 pub use super::points::Entity as Points;
 pub use super::rewards::Entity as Rewards;
 pub use super::rewards_pool::Entity as RewardsPool;
+pub use super::tasks::Entity as Tasks;
 pub use super::users::Entity as Users;
