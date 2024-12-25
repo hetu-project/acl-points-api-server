@@ -2,7 +2,7 @@ use crate::{
     common::error::{AppError, AppResult},
     database::{
         entities::{invites, prelude::Invites},
-        Storage,
+        DbTxn, Storage,
     },
 };
 use rand::{distributions::Alphanumeric, Rng};
@@ -69,5 +69,22 @@ impl Storage {
             Some(invite) => Ok(invite),
             None => Err(AppError::CustomError("invite error".to_string())), //TODO
         }
+    }
+}
+
+impl DbTxn {
+    async fn create_invite_code(
+        &self,
+        user_uid: &str,
+        invited_code: &str,
+    ) -> AppResult<invites::Model> {
+        let invite = invites::ActiveModel {
+            user_uid: Set(user_uid.to_string()),
+            code: Set(invited_code.to_string()),
+            created_at: Set(chrono::Utc::now().into()),
+        };
+        let created_code = invite.insert(&self.0).await?;
+
+        Ok(created_code)
     }
 }

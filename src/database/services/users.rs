@@ -2,7 +2,7 @@ use crate::{
     common::error::{AppError, AppResult},
     database::{
         entities::{prelude::Users, users},
-        Storage,
+        DbTxn, Storage,
     },
 };
 use sea_orm::*;
@@ -134,5 +134,20 @@ impl Storage {
             .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
             .all(self.conn.as_ref())
             .await?)
+    }
+}
+
+impl DbTxn {
+    pub async fn create_user(&self, user: users::Model) -> AppResult<users::Model> {
+        let mut active_user = user.into_active_model();
+
+        active_user.id = NotSet;
+        active_user.uid = Set(Uuid::new_v4().to_string());
+        active_user.created_at = Set(Some(chrono::Utc::now().into()));
+        active_user.updated_at = Set(Some(chrono::Utc::now().into()));
+
+        let created_user = active_user.insert(&self.0).await?;
+
+        Ok(created_user)
     }
 }

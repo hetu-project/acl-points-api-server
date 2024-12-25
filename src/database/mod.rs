@@ -2,7 +2,7 @@ pub mod entities;
 pub mod migration;
 pub mod services;
 
-use crate::common::config::DatabaseConfig;
+use crate::common::{config::DatabaseConfig, error::AppResult};
 use sea_orm::*;
 use std::{sync::Arc, time::Duration};
 
@@ -24,5 +24,18 @@ impl Storage {
             .expect("failed to connect to database");
 
         Self { conn: Arc::new(db) }
+    }
+}
+
+#[derive(Debug)]
+pub struct DbTxn(pub DatabaseTransaction);
+
+impl DbTxn {
+    pub async fn new(db: &DatabaseConnection) -> AppResult<Self> {
+        Ok(Self(db.begin().await?))
+    }
+
+    pub async fn commit_transaction(self) -> AppResult<()> {
+        Ok(self.0.commit().await?)
     }
 }
