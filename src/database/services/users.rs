@@ -28,8 +28,8 @@ impl Storage {
 
         active_user.id = NotSet;
         active_user.uid = Set(Uuid::new_v4().to_string());
-        active_user.created_at = Set(Some(chrono::Utc::now()));
-        active_user.updated_at = Set(Some(chrono::Utc::now()));
+        active_user.created_at = Set(Some(chrono::Utc::now().into()));
+        active_user.updated_at = Set(Some(chrono::Utc::now().into()));
 
         let created_user = active_user.insert(self.conn.as_ref()).await?;
 
@@ -114,11 +114,25 @@ impl Storage {
             let mut active_user = user.into_active_model();
 
             active_user.address = Set(Some(user_addr.to_string()));
-            active_user.updated_at = Set(chrono::Utc::now().into());
+            active_user.updated_at = Set(Some(chrono::Utc::now().into()));
 
             active_user.update(self.conn.as_ref()).await?;
         }
 
         Ok(())
+    }
+
+    async fn count_invited_users(&self, code: &str) -> AppResult<u64> {
+        Ok(Users::find()
+            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
+            .count(self.conn.as_ref())
+            .await?)
+    }
+
+    async fn get_invited_users(&self, code: &str) -> AppResult<Vec<users::Model>> {
+        Ok(Users::find()
+            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
+            .all(self.conn.as_ref())
+            .await?)
     }
 }

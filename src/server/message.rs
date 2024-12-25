@@ -1,6 +1,7 @@
 use crate::database::entities::users;
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct Response<T> {
@@ -24,11 +25,12 @@ impl Into<users::Model> for UserInfo {
     fn into(self) -> users::Model {
         users::Model {
             id: Default::default(),
-            uid: "".to_string(),
+            uid: Uuid::new_v4().to_string(),
             name: self.name,
             email: self.email,
             address: None,
             password: None,
+            invited_by: None,
             role: "user".to_string(),
             photo: self.picture,
             verified: self.email_verified,
