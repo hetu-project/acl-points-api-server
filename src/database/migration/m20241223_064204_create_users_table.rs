@@ -36,6 +36,8 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Users::InvitedBy).string().null())
                     .col(ColumnDef::new(Users::Role).string().not_null())
+                    .col(ColumnDef::new(Users::EmailConfirmed).boolean().not_null())
+                    .col(ColumnDef::new(Users::UidConfirmed).boolean().not_null())
                     .col(ColumnDef::new(Users::Photo).string().not_null())
                     .col(ColumnDef::new(Users::Verified).boolean().not_null())
                     .col(ColumnDef::new(Users::Provider).string().not_null())
@@ -73,6 +75,8 @@ pub enum Users {
     InvitedBy,
     InviteCode,
     Role,
+    EmailConfirmed,
+    UidConfirmed,
     Photo,
     Verified,
     Provider,

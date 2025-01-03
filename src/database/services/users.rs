@@ -205,4 +205,80 @@ impl Storage {
 
         Ok(())
     }
+
+    pub async fn is_user_email_confirmed(&self, user_email: &str) -> AppResult<bool> {
+        let user = Users::find()
+            .filter(users::Column::Email.eq(user_email))
+            .one(self.conn.as_ref())
+            .await?;
+
+        if let Some(user) = user {
+            if user.email_confirmed == true {
+                Ok(true)
+            } else {
+                return Err(AppError::UserUnExisted(format!(
+                    "User: {} already exists",
+                    user_email
+                )));
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn update_user_confirmed_email(&self, user_email: &str) -> AppResult<()> {
+        if let Some(user) = Users::find()
+            .filter(users::Column::Email.eq(user_email))
+            .one(self.conn.as_ref())
+            .await?
+            .map(|l| l.into_active_model())
+        {
+            let mut active_user = user.into_active_model();
+
+            active_user.email_confirmed = Set(true);
+            active_user.updated_at = Set(Some(chrono::Utc::now().into()));
+
+            active_user.update(self.conn.as_ref()).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn is_user_uid_confirmed(&self, user_uid: &str) -> AppResult<bool> {
+        let user = Users::find()
+            .filter(users::Column::Uid.eq(user_uid))
+            .one(self.conn.as_ref())
+            .await?;
+
+        if let Some(user) = user {
+            if user.uid_confirmed == true {
+                Ok(true)
+            } else {
+                return Err(AppError::UserUnExisted(format!(
+                    "User: {} already exists",
+                    user_uid
+                )));
+            }
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub async fn update_user_confirmed_uid(&self, user_uid: &str) -> AppResult<()> {
+        if let Some(user) = Users::find()
+            .filter(users::Column::Uid.eq(user_uid))
+            .one(self.conn.as_ref())
+            .await?
+            .map(|l| l.into_active_model())
+        {
+            let mut active_user = user.into_active_model();
+
+            active_user.uid_confirmed = Set(true);
+            active_user.updated_at = Set(Some(chrono::Utc::now().into()));
+
+            active_user.update(self.conn.as_ref()).await?;
+        }
+
+        Ok(())
+    }
 }

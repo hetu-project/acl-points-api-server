@@ -72,6 +72,8 @@ impl Into<users::ActiveModel> for User {
             invited_by: Set(self.invited_by),
             invite_code: Set(self.invite_code),
             role: Set(self.role),
+            email_confirmed: Set(false),
+            uid_confirmed: Set(false),
             photo: Set(self.photo),
             verified: Set(self.verified),
             provider: Set(self.provider),
@@ -89,6 +91,8 @@ pub struct UserResponse {
     pub photo: String,
     pub invite_code: String,
     pub invited_by: Option<String>,
+    pub email_confirmed: bool,
+    pub uid_confirmed: bool,
 }
 
 impl From<users::Model> for UserResponse {
@@ -100,6 +104,8 @@ impl From<users::Model> for UserResponse {
             photo: user.photo,
             invite_code: user.invite_code,
             invited_by: user.invited_by,
+            email_confirmed: user.email_confirmed,
+            uid_confirmed: user.uid_confirmed,
         }
     }
 }
@@ -122,7 +128,7 @@ impl UpdateAddressReq {
 }
 
 #[derive(Deserialize, Debug, Validate)]
-pub struct ComfirmReq {
+pub struct ConfirmReq {
     #[validate(email)]
     pub email: Option<String>,
 
@@ -130,7 +136,7 @@ pub struct ComfirmReq {
     pub uid: Option<String>,
 }
 
-impl ComfirmReq {
+impl ConfirmReq {
     pub fn validate_items(&self) -> AppResult<()> {
         Ok(self.validate()?)
     }

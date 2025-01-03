@@ -1,7 +1,6 @@
 mod auth;
 mod candy_task;
 mod health;
-mod message;
 pub mod middlewares;
 mod router;
 mod server;

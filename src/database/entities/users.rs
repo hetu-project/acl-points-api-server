@@ -19,6 +19,8 @@ pub struct Model {
     pub invite_code: String,
     pub invited_by: Option<String>,
     pub role: String,
+    pub email_confirmed: bool,
+    pub uid_confirmed: bool,
     pub photo: String,
     pub verified: bool,
     pub provider: String,
