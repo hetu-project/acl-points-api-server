@@ -15,7 +15,7 @@ struct AggregationResult {
 impl Storage {
     pub async fn award_points(
         &self,
-        user_uid: i32,
+        user_uid: String,
         point_type: &str,
         points: i32,
         description: &str,

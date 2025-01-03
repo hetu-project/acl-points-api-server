@@ -14,6 +14,7 @@ use axum::{
 };
 use oauth2::{reqwest::async_http_client, AuthorizationCode, RedirectUrl, TokenResponse};
 use reqwest::Client;
+use tower_sessions::Session;
 
 #[debug_handler]
 pub async fn auth_token(
@@ -83,12 +84,12 @@ pub async fn auth_token(
 
     tracing::info!("[auth_token] jwt token: {:?}", token);
 
-    return Ok(Json(serde_json::json!({
+    Ok(Json(serde_json::json!({
         "result": {
             "access_token": token,
             "user_info": UserResponse::from(created_user)
-         }
-    })));
+        }
+    })))
 }
 
 #[debug_handler]
@@ -98,7 +99,7 @@ pub async fn callback_handler(
 ) -> Json<serde_json::Value> {
     tracing::info!("auth params: {:?}", params);
 
-    return Json(serde_json::json!({
+    Json(serde_json::json!({
         "result": {
             "code": params.code,
             "scope":params.scope,
@@ -106,6 +107,19 @@ pub async fn callback_handler(
             "prompt": params.prompt ,
             "state": "authorization_code",
             "redirect_uri": "http://127.0.0.1:8080/auth/callback"
-         }
-    }));
+        }
+    }))
+}
+
+#[debug_handler]
+pub async fn get_csrf_token(
+    State(_state): State<SharedState>,
+    Query(_params): Query<OAuthCallbackParams>,
+    session: Session,
+) -> Json<serde_json::Value> {
+    tracing::info!("{:?}", session.id());
+
+    Json(serde_json::json!({
+    "a":"b"
+    }))
 }

@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Points::UserUid).integer().not_null())
+                    .col(ColumnDef::new(Points::UserUid).string().not_null())
                     .col(ColumnDef::new(Points::PointType).string().not_null())
                     .col(ColumnDef::new(Points::Points).integer().not_null())
                     .col(ColumnDef::new(Points::Description).string().null())

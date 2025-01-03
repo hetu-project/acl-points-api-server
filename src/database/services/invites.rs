@@ -50,7 +50,7 @@ impl Storage {
         Ok(created_code)
     }
 
-    async fn get_invite_by_user(&self, user_uid: &str) -> AppResult<invites::Model> {
+    async fn get_invite_by_uid(&self, user_uid: &str) -> AppResult<invites::Model> {
         match Invites::find_by_id(user_uid)
             .one(self.conn.as_ref())
             .await?

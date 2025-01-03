@@ -18,11 +18,21 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Tasks::TaskName).string().not_null())
+                    .col(
+                        ColumnDef::new(Tasks::TaskName)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
                     .col(ColumnDef::new(Tasks::Description).string().not_null())
-                    .col(ColumnDef::new(Tasks::Points).integer().not_null())
+                    .col(ColumnDef::new(Tasks::RuleJson).string().not_null())
                     .col(
                         ColumnDef::new(Tasks::CreatedAt)
+                            .timestamp_with_time_zone()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Tasks::UpdatedAt)
                             .timestamp_with_time_zone()
                             .not_null(),
                     )
@@ -38,12 +48,13 @@ impl MigrationTrait for Migration {
     }
 }
 
-#[derive(DeriveIden)]
+#[derive(Iden)]
 enum Tasks {
     Table,
     Id,
     TaskName,
     Description,
-    Points,
+    RuleJson,
     CreatedAt,
+    UpdatedAt,
 }

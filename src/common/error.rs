@@ -19,6 +19,9 @@ pub enum AppError {
     #[error("IO error:{0}")]
     IoError(#[from] std::io::Error),
 
+    #[error("serde json error: {0}")]
+    SerializationError(#[from] serde_json::Error),
+
     #[error("No operator config found at this path: {0}")]
     #[code(30003)]
     ConfigMissing(PathBuf),
@@ -60,6 +63,7 @@ impl IntoResponse for AppError {
             Self::UrlParseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::UserExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::SerializationError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UserUnExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
         };
 
