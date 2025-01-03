@@ -38,6 +38,9 @@ pub enum AppError {
     #[code(30001)]
     ValidationError(#[from] ValidationErrors),
 
+    #[error("input validate error : {0}")]
+    InputValidateError(String),
+
     #[error("url parse error: {0}")]
     UrlParseError(#[from] url::ParseError),
 
@@ -49,6 +52,9 @@ pub enum AppError {
 
     #[error("{0}")]
     CustomError(String),
+
+    #[error("{0}")]
+    RequestError(String),
 }
 
 impl IntoResponse for AppError {
@@ -60,11 +66,13 @@ impl IntoResponse for AppError {
             Self::SeaOrmDBError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::CustomError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::UrlParseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::UserExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::SerializationError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::UrlParseError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InputValidateError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::UserExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::UserUnExisted(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::RequestError(_) => StatusCode::SERVICE_UNAVAILABLE,
         };
 
         (status, Json(serde_json::json!({"error":self.to_string()}))).into_response()

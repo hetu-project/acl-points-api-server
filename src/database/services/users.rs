@@ -2,34 +2,57 @@ use crate::{
     common::error::{AppError, AppResult},
     database::{
         entities::{prelude::Users, users},
-        DbTxn, Storage,
+        Storage,
     },
 };
+use sea_orm::prelude::Expr;
 use sea_orm::*;
-use uuid::Uuid;
-
 impl Storage {
-    pub async fn create_user(&self, user: users::Model) -> AppResult<users::Model> {
-        tracing::info!("user model: {:?}", user);
+    pub async fn create_user(&self, active_user: users::ActiveModel) -> AppResult<users::Model> {
+        tracing::info!("user model: {:?}", active_user);
 
-        match self.is_user_exists_by_email(&user.email).await? {
+        let user_uid: String = active_user
+            .get(users::Column::Uid)
+            .try_as_ref()
+            .ok_or(AppError::CustomError(
+                "cannot get uid from active user".into(),
+            ))?
+            .to_string();
+
+        let user_invite_code: String = active_user
+            .get(users::Column::InviteCode)
+            .try_as_ref()
+            .ok_or(AppError::CustomError(
+                "cannot get invite_code from active user".into(),
+            ))?
+            .to_string();
+
+        let user_email: String = active_user
+            .get(users::Column::Email)
+            .try_as_ref()
+            .ok_or(AppError::CustomError(
+                "cannot get email from active user".into(),
+            ))?
+            .to_string();
+
+        //let user: users::Model = active_user.clone().try_into_model()?;
+        match self
+            .is_user_exists(&user_uid, &user_invite_code, &user_email)
+            .await?
+        {
             true => {
                 return Err(AppError::UserExisted(format!(
                     "User: {} already exists",
-                    user.email
+                    user_email
                 )))
             }
             false => (),
         }
 
-        //let hashed_password: String = hash_password(&input.password)?;
-
-        let mut active_user = user.into_active_model();
-
-        active_user.id = NotSet;
-        active_user.uid = Set(Uuid::new_v4().to_string());
-        active_user.created_at = Set(Some(chrono::Utc::now().into()));
-        active_user.updated_at = Set(Some(chrono::Utc::now().into()));
+        //let mut active_user = user.into_active_model();
+        //active_user.id = NotSet;
+        //active_user.created_at = Set(Some(chrono::Utc::now().into()));
+        //active_user.updated_at = Set(Some(chrono::Utc::now().into()));
 
         let created_user = active_user.insert(self.conn.as_ref()).await?;
 
@@ -59,28 +82,89 @@ impl Storage {
         }
     }
 
-    pub async fn is_user_exists_by_address(&self, user_address: &str) -> AppResult<bool> {
-        let user = Users::find()
-            .filter(users::Column::Address.eq(user_address))
+    pub async fn is_user_exists_by_code(&self, code: &str) -> AppResult<bool> {
+        let existing = Users::find()
+            .filter(users::Column::InviteCode.eq(code))
             .one(self.conn.as_ref())
             .await?;
 
-        Ok(user.is_some())
+        Ok(existing.is_some())
     }
 
-    pub async fn get_user_by_address(&self, user_address: &str) -> AppResult<users::Model> {
-        //TODO translate address to lowercase
+    pub async fn is_user_exists(&self, uid: &str, code: &str, email: &str) -> AppResult<bool> {
+        let existing = Users::find()
+            .filter(
+                Expr::col(users::Column::InviteCode)
+                    .eq(code)
+                    .or(Expr::col(users::Column::Email).eq(email))
+                    .or(Expr::col(users::Column::Uid).eq(uid)),
+            )
+            .one(self.conn.as_ref())
+            .await?;
+
+        Ok(existing.is_some())
+    }
+
+    pub async fn count_invited_users_by_email(&self, email: &str) -> AppResult<u64> {
+        let user = match Users::find()
+            .filter(users::Column::Email.eq(email))
+            .one(self.conn.as_ref())
+            .await?
+        {
+            Some(u) => u,
+            None => {
+                return Err(AppError::UserUnExisted(format!(
+                    "User: {} not exists",
+                    email
+                )))
+            }
+        };
+
+        Ok(Users::find()
+            .filter(users::Column::InvitedBy.eq(Some(user.invite_code)))
+            .count(self.conn.as_ref())
+            .await
+            .unwrap_or(0))
+    }
+
+    pub async fn get_inviter_by_code(&self, code: &str) -> AppResult<users::Model> {
         match Users::find()
-            .filter(users::Column::Email.eq(user_address))
+            .filter(users::Column::InviteCode.eq(code.to_string()))
             .one(self.conn.as_ref())
             .await?
         {
             Some(user) => Ok(user),
             None => Err(AppError::UserUnExisted(format!(
-                "User {} has not existed",
-                user_address
+                "Inviter {} has not existed",
+                code
             ))),
         }
+    }
+
+    pub async fn count_invited_users_by_code(&self, code: &str) -> AppResult<u64> {
+        Ok(Users::find()
+            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
+            .count(self.conn.as_ref())
+            .await?)
+    }
+
+    pub async fn get_invited_users_by_code(&self, code: &str) -> AppResult<Vec<users::Model>> {
+        Ok(Users::find()
+            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
+            .all(self.conn.as_ref())
+            .await?)
+    }
+
+    pub async fn count_total_users(&self) -> AppResult<u64> {
+        Ok(Users::find().count(self.conn.as_ref()).await?)
+    }
+
+    pub async fn is_user_exists_by_address(&self, user_address: &str) -> AppResult<bool> {
+        let user = Users::find()
+            .filter(users::Column::Address.eq(user_address))
+            .one(self.conn.as_ref())
+            .await?;
+        Ok(user.is_some())
     }
 
     pub async fn update_user_address_by_email(
@@ -120,34 +204,5 @@ impl Storage {
         }
 
         Ok(())
-    }
-
-    async fn count_invited_users(&self, code: &str) -> AppResult<u64> {
-        Ok(Users::find()
-            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
-            .count(self.conn.as_ref())
-            .await?)
-    }
-
-    async fn get_invited_users(&self, code: &str) -> AppResult<Vec<users::Model>> {
-        Ok(Users::find()
-            .filter(users::Column::InvitedBy.eq(Some(code.to_string())))
-            .all(self.conn.as_ref())
-            .await?)
-    }
-}
-
-impl DbTxn {
-    pub async fn create_user(&self, user: users::Model) -> AppResult<users::Model> {
-        let mut active_user = user.into_active_model();
-
-        active_user.id = NotSet;
-        active_user.uid = Set(Uuid::new_v4().to_string());
-        active_user.created_at = Set(Some(chrono::Utc::now().into()));
-        active_user.updated_at = Set(Some(chrono::Utc::now().into()));
-
-        let created_user = active_user.insert(&self.0).await?;
-
-        Ok(created_user)
     }
 }

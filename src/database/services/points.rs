@@ -1,5 +1,5 @@
 use crate::{
-    common::error::{AppError, AppResult},
+    common::error::AppResult,
     database::{
         entities::{points, prelude::Points},
         Storage,
@@ -7,9 +7,9 @@ use crate::{
 };
 use sea_orm::*;
 
-#[derive(FromQueryResult)]
+#[derive(FromQueryResult, Debug)]
 struct AggregationResult {
-    total_points: i32, // Match the alias name
+    total_points: Option<i64>, // Match the alias name
 }
 
 impl Storage {
@@ -34,7 +34,7 @@ impl Storage {
         Ok(point)
     }
 
-    pub async fn get_user_points(&self, user_uid: i32) -> AppResult<i32> {
+    pub async fn get_user_points(&self, user_uid: &str) -> AppResult<i64> {
         match Points::find()
             .filter(points::Column::UserUid.eq(user_uid))
             .select_only()
@@ -43,12 +43,11 @@ impl Storage {
             .one(self.conn.as_ref())
             .await?
         {
-            Some(aggr_result) => Ok(aggr_result.total_points),
+            Some(aggr_result) => Ok(aggr_result.total_points.unwrap_or(0)),
             None => Ok(0),
         }
     }
-
-    pub async fn cleanup_expired_points(&self) -> AppResult<()> {
+    pub async fn cleanup_expired_point(&self) -> AppResult<()> {
         use sea_orm::EntityTrait;
 
         points::Entity::delete_many()

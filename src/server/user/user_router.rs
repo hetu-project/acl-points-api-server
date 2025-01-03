@@ -1,4 +1,4 @@
-use super::user_handler::{get_user_info, update_user_address};
+use super::user_handler::{get_user_count, get_user_info, get_user_invites, update_user_address};
 use crate::app::SharedState;
 use crate::server::middlewares;
 use axum::{
@@ -11,6 +11,8 @@ pub fn user_router(state: SharedState) -> Router<SharedState> {
     Router::new()
         .route("/info", get(get_user_info))
         .route("/info/address", post(update_user_address))
+        .route("/count", get(get_user_count))
+        .route("/invites", get(get_user_invites))
         .layer(middleware::from_fn_with_state(
             state,
             middlewares::auth_middleware,

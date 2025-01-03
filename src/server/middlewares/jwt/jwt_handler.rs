@@ -1,3 +1,4 @@
+use crate::common::consts;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, errors::Result, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -8,17 +9,17 @@ pub struct JwtHandler {
 }
 
 impl JwtHandler {
-    pub fn create_token(&self, user_name: &str, user_email: &str) -> String {
+    pub fn create_token(&self, user_uid: &str, user_name: &str, user_email: &str) -> String {
         let expiration = Utc::now()
-            .checked_add_signed(Duration::minutes(60))
+            .checked_add_signed(Duration::minutes(consts::JWT_EXPIRATION))
             .expect("valid timestamp")
             .timestamp() as usize;
 
         let claims = Claims {
-            sub: user_name.to_string(),
-            exp: expiration,
+            sub: user_uid.into(),
             name: user_name.into(),
             email: user_email.into(),
+            exp: expiration,
         };
 
         let header = Header::default();
@@ -38,7 +39,7 @@ impl JwtHandler {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
-    pub exp: usize,
     pub name: String,
     pub email: String,
+    pub exp: usize,
 }

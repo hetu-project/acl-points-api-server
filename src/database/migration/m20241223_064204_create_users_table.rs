@@ -28,6 +28,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Users::Address).string().unique_key().null())
                     .col(ColumnDef::new(Users::Password).string().null())
+                    .col(
+                        ColumnDef::new(Users::InviteCode)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
                     .col(ColumnDef::new(Users::InvitedBy).string().null())
                     .col(ColumnDef::new(Users::Role).string().not_null())
                     .col(ColumnDef::new(Users::Photo).string().not_null())
@@ -65,6 +71,7 @@ pub enum Users {
     Address,
     Password,
     InvitedBy,
+    InviteCode,
     Role,
     Photo,
     Verified,

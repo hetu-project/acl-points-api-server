@@ -7,7 +7,6 @@ use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,
 };
-use tower_sessions::{Expiry, MemoryStore, Session, SessionManagerLayer};
 
 pub fn app_router(state: SharedState) -> Router {
     let user_router = user_router(state.clone());
@@ -54,6 +53,5 @@ pub fn app_router(state: SharedState) -> Router {
                         ),
                 ),
         )
-        .layer(SessionManagerLayer::new(MemoryStore::default()))
         .with_state(state.clone())
 }
