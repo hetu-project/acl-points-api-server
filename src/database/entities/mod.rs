@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod candy;
 pub mod points;
 pub mod rewards;
 pub mod rewards_pool;

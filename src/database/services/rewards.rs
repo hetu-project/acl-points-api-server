@@ -1,8 +1,8 @@
 use crate::{
     common::error::{AppError, AppResult},
     database::{
-        entities::{prelude::Rewards, prelude::RewardsPool, rewards, rewards_pool},
-        DbTxn, Storage,
+        entities::{prelude::RewardsPool, rewards, rewards_pool},
+        Storage,
     },
 };
 use sea_orm::*;

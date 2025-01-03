@@ -5,6 +5,7 @@ mod m20241225_025628_create_points_table;
 mod m20241225_033708_create_rewards_table;
 mod m20241225_040254_create_rewards_pool_table;
 mod m20241225_071419_create_tasks_table;
+mod m20250103_050433_create_candy_table;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241225_033708_create_rewards_table::Migration),
             Box::new(m20241225_040254_create_rewards_pool_table::Migration),
             Box::new(m20241225_071419_create_tasks_table::Migration),
+            Box::new(m20250103_050433_create_candy_table::Migration),
         ]
     }
 }

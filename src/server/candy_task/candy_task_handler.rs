@@ -4,31 +4,18 @@ use crate::{
     common::error::{AppError, AppResult},
     server::middlewares::AuthToken,
 };
-use axum::{
-    debug_handler,
-    extract::{self, Query, State},
-    Json,
-};
+use axum::{debug_handler, extract::State, Json};
 use rand::Rng;
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Debug)]
-pub struct CandyTaskParams {}
 
 #[debug_handler]
-async fn shake_candy(
+pub async fn shake_candy(
     State(state): State<SharedState>,
-    Query(params): Query<CandyTaskParams>,
     AuthToken(user): AuthToken,
 ) -> AppResult<Json<serde_json::Value>> {
     let client = state.jwt_handler.clone();
     let claim = client.decode_token(user).unwrap();
 
-    //TODO sub as uid?
-    let attempts = state
-        .store
-        .get_user_attempts(claim.sub.clone(), "candy_task".into())
-        .await?;
+    let attempts = state.store.get_user_attempts(claim.sub.as_str()).await?;
 
     let task_rule = candy_task::get_candy_task().await?.rule;
 
@@ -40,13 +27,50 @@ async fn shake_candy(
 
     let reward = rand::thread_rng().gen_range(task_rule.reward_min..=task_rule.reward_max);
 
-    state
-        .store
-        .record_user_attempt(claim.sub, "candy_task".into(), reward)
-        .await?;
+    state.store.record_user_attempt(claim.sub, reward).await?;
 
     Ok(Json(serde_json::json!({
-        "message": "You received a candy reward!",
-        "reward": reward
+        "result": {
+            "reward": reward,
+            "count" : attempts,
+            "limit" : task_rule.max_attempts_per_day
+        }
+    })))
+}
+
+#[debug_handler]
+pub async fn get_shake_times(
+    State(state): State<SharedState>,
+    AuthToken(user): AuthToken,
+) -> AppResult<Json<serde_json::Value>> {
+    let client = state.jwt_handler.clone();
+    let claim = client.decode_token(user).unwrap();
+
+    let attempts = state.store.get_user_attempts(claim.sub.as_str()).await?;
+
+    let task_rule = candy_task::get_candy_task().await?.rule;
+
+    Ok(Json(serde_json::json!({
+    "result" : {
+        "count" : attempts,
+        "limit" : task_rule.max_attempts_per_day
+    }
+    })))
+}
+
+#[debug_handler]
+pub async fn get_candy_count(
+    State(state): State<SharedState>,
+    AuthToken(user): AuthToken,
+) -> AppResult<Json<serde_json::Value>> {
+    let client = state.jwt_handler.clone();
+    let claim = client.decode_token(user).unwrap();
+
+    let count = state.store.get_user_candy_count(claim.sub.as_str()).await?;
+
+    Ok(Json(serde_json::json!({
+    "result" : {
+        "count" : count,
+    }
     })))
 }

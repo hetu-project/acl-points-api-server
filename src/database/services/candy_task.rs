@@ -2,7 +2,7 @@
 use crate::{
     common::error::{AppError, AppResult},
     database::{
-        entities::{points, prelude::Points, prelude::Tasks, tasks},
+        entities::{candy, prelude::Candy, prelude::Tasks, tasks},
         Storage,
     },
 };
@@ -10,6 +10,11 @@ use once_cell::sync::OnceCell;
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
+
+#[derive(FromQueryResult, Debug)]
+struct AggregationResult {
+    total_candies: Option<i64>, // Match the alias name
+}
 
 static CANDY_TASK: OnceCell<RwLock<CandyTask>> = OnceCell::new();
 
@@ -25,30 +30,6 @@ pub struct CandyTask {
     pub name: String,
     pub description: String,
     pub rule: CandyTaskRule,
-}
-
-async fn init_candy_rule(db: &DatabaseConnection, task_id: i32) -> AppResult<()> {
-    let task = Tasks::find_by_id(task_id)
-        .one(db)
-        .await?
-        .ok_or(AppError::UserUnExisted(format!(
-            "Task {} has not existed",
-            task_id
-        )))?;
-
-    let rule: CandyTaskRule = serde_json::from_str(&task.rule_json)?;
-
-    let candy_task = CandyTask {
-        name: task.task_name,
-        description: task.description,
-        rule,
-    };
-
-    CANDY_TASK
-        .set(RwLock::new(candy_task))
-        .map_err(|_| AppError::CustomError("Candy task has already been initialized".into()))?;
-
-    Ok(())
 }
 
 pub async fn get_candy_task() -> AppResult<CandyTask> {
@@ -91,30 +72,64 @@ pub async fn update_candy_task_rule(
 }
 
 impl Storage {
-    pub async fn record_user_attempt(
-        &self,
-        user_uid: String,
-        task_name: String,
-        reward: i32,
-    ) -> AppResult<()> {
-        let log = points::ActiveModel {
-            user_uid: Set(user_uid),
-            point_type: Set(task_name),
-            points: Set(reward),
-            created_at: Set(chrono::Utc::now().into()),
-            ..Default::default()
+    pub async fn load_candy_rule(&self, task_name: &str) -> AppResult<()> {
+        let task = Tasks::find()
+            .filter(tasks::Column::TaskName.eq(task_name))
+            .one(self.conn.as_ref())
+            .await?
+            .ok_or(AppError::UserUnExisted(format!(
+                "Task {} has not existed",
+                task_name
+            )))?;
+
+        let rule: CandyTaskRule = serde_json::from_str(&task.rule_json)?;
+
+        let candy_task = CandyTask {
+            name: task.task_name,
+            description: task.description,
+            rule,
         };
-        Points::insert(log).exec(self.conn.as_ref()).await?;
+
+        CANDY_TASK
+            .set(RwLock::new(candy_task))
+            .map_err(|_| AppError::CustomError("Candy task has already been initialized".into()))?;
+
         Ok(())
     }
 
-    pub async fn get_user_attempts(&self, user_id: String, task_name: String) -> AppResult<i32> {
-        let count = Points::find()
-            .filter(points::Column::UserUid.eq(user_id))
-            .filter(points::Column::PointType.eq(task_name))
-            .filter(points::Column::CreatedAt.gte(chrono::Utc::today().and_hms_opt(0, 0, 0)))
+    pub async fn record_user_attempt(&self, user_uid: String, reward: i32) -> AppResult<()> {
+        let new_attempt = candy::ActiveModel {
+            user_uid: Set(user_uid),
+            amount: Set(reward),
+            created_at: Set(chrono::Utc::now().into()),
+            ..Default::default()
+        };
+        Candy::insert(new_attempt).exec(self.conn.as_ref()).await?;
+        Ok(())
+    }
+
+    pub async fn get_user_attempts(&self, user_id: &str) -> AppResult<i32> {
+        let count = Candy::find()
+            .filter(candy::Column::UserUid.eq(user_id))
+            .filter(
+                candy::Column::CreatedAt.gte(chrono::Utc::now().date_naive().and_hms_opt(0, 0, 0)),
+            )
             .count(self.conn.as_ref())
             .await?;
         Ok(count as i32)
+    }
+
+    pub async fn get_user_candy_count(&self, user_uid: &str) -> AppResult<i64> {
+        match Candy::find()
+            .filter(candy::Column::UserUid.eq(user_uid))
+            .select_only()
+            .column_as(candy::Column::Amount.sum(), "total_candies")
+            .into_model::<AggregationResult>()
+            .one(self.conn.as_ref())
+            .await?
+        {
+            Some(aggr_result) => Ok(aggr_result.total_candies.unwrap_or(0)),
+            None => Ok(0),
+        }
     }
 }

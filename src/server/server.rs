@@ -1,7 +1,10 @@
+use super::candy_task;
 use super::router::app_router;
 use crate::{app::SharedState, common::error::AppResult};
 
 pub async fn http_server_start(state: SharedState) -> AppResult<()> {
+    candy_task::init(state.clone()).await?;
+
     let router = app_router(state.clone());
 
     let addr = format!("{}:{}", state.config.server.host, state.config.server.port);

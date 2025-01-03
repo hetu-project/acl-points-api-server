@@ -1,6 +1,4 @@
-use alloy_primitives::{aliases::B256, keccak256, Address, PrimitiveSignature};
-use alloy_signer::{Signer, SignerSync};
-use alloy_signer_local::PrivateKeySigner;
+use alloy_primitives::{aliases::B256, keccak256, PrimitiveSignature};
 use chrono::Utc;
 use rand::Rng;
 
@@ -13,6 +11,7 @@ pub struct SiweMessage {
     pub issued_at: String,
 }
 
+#[allow(dead_code)]
 impl SiweMessage {
     fn new(domain: &str, address: &str, statement: &str) -> Self {
         let nonce = rand::thread_rng()
@@ -64,27 +63,33 @@ impl SiweMessage {
     }
 }
 
-#[test]
-fn test_erc4361() {
-    let signer = PrivateKeySigner::random();
-    let signer = signer.with_chain_id(Some(1));
+#[cfg(test)]
+mod tests {
+    use alloy_signer::{Signer, SignerSync};
+    use alloy_signer_local::PrivateKeySigner;
 
-    let message = SiweMessage::new(
-        "example.com",
-        &signer.address().to_string(),
-        "Sign in to access the app",
-    );
+    #[test]
+    fn test_erc4361() {
+        let signer = PrivateKeySigner::random();
+        let signer = signer.with_chain_id(Some(1));
 
-    let signable_message = message.to_signable_message();
-    println!("Signable Message:\n{}", signable_message);
+        let message = SiweMessage::new(
+            "example.com",
+            &signer.address().to_string(),
+            "Sign in to access the app",
+        );
 
-    let signature = signer
-        .sign_message_sync(signable_message.as_bytes())
-        .expect("Signing failed");
+        let signable_message = message.to_signable_message();
+        println!("Signable Message:\n{}", signable_message);
 
-    let is_valid = message.verify_signature_with_prehash(&signature);
-    println!("Signature is valid: {}", is_valid);
+        let signature = signer
+            .sign_message_sync(signable_message.as_bytes())
+            .expect("Signing failed");
 
-    let is_valid = message.verify_signature_with_msg(&signature);
-    println!("Signature is valid: {}", is_valid);
+        let is_valid = message.verify_signature_with_prehash(&signature);
+        println!("Signature is valid: {}", is_valid);
+
+        let is_valid = message.verify_signature_with_msg(&signature);
+        println!("Signature is valid: {}", is_valid);
+    }
 }

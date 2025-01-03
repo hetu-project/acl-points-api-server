@@ -1,12 +1,11 @@
 use crate::{
-    common::error::{AppError, AppResult},
+    common::error::AppResult,
     database::{
         entities::{prelude::Tasks, tasks},
         Storage,
     },
 };
 use sea_orm::*;
-use serde::{Deserialize, Serialize};
 
 impl Storage {
     pub async fn get_all_tasks(&self) -> AppResult<Vec<tasks::Model>> {
