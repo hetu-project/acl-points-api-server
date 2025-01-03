@@ -4,6 +4,7 @@ mod health;
 pub mod middlewares;
 mod router;
 mod server;
+mod tasks;
 mod user;
 mod webset;
 

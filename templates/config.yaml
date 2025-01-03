@@ -1,6 +1,5 @@
 database:
-  #db_url: "postgres://test:123456@0.0.0.0:5433/nostr_gateway"
-  db_url: "postgres://zhangwei:zhangwei@0.0.0.0:5432/mydb"
+  db_url: "postgres://test:123456@0.0.0.0:5433/plugin"
   max_connect_pool: 30
   min_connect_pool: 10
   connect_timeout: 30

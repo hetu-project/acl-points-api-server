@@ -1,6 +1,6 @@
 use super::{
-    auth::auth_router, candy_task::candy_router, health::health_router, user::user_router,
-    webset::index_router,
+    auth::auth_router, candy_task::candy_router, health::health_router, tasks::tasks_router,
+    user::user_router, webset::index_router,
 };
 use crate::{app::SharedState, server::middlewares};
 use axum::{error_handling::HandleErrorLayer, http::Method, Router};
@@ -17,6 +17,7 @@ pub fn app_router(state: SharedState) -> Router {
     let index_router = index_router();
     let health_router = health_router();
     let candy_router = candy_router(state.clone());
+    let tasks_router = tasks_router(state.clone());
 
     Router::new()
         .nest("/", index_router)
@@ -24,6 +25,7 @@ pub fn app_router(state: SharedState) -> Router {
         .nest("/api/v1/health", health_router)
         .nest("/api/v1/user", user_router)
         .nest("/api/v1/candy", candy_router)
+        .nest("/api/v1/tasks", tasks_router)
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
