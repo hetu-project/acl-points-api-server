@@ -102,7 +102,11 @@ pub async fn confirm_user_email(
     let claim = client.decode_token(user).unwrap();
 
     if user_email != claim.email {
-        return Err(AppError::CustomError("invalid email".into()));
+        return Err(AppError::CustomError(format!(
+                    "invalid email {:?}, {:?}",
+                    user_email, claim.email
+        )));
+
     }
 
     let confirded = state
@@ -110,7 +114,7 @@ pub async fn confirm_user_email(
         .is_user_email_confirmed(claim.email.as_ref())
         .await?;
 
-    if confirded == true {
+    if confirded {
         return Err(AppError::CustomError(
             "user's email has been confirmed".into(),
         ));
@@ -145,12 +149,15 @@ pub async fn confirm_user_uid(
     let claim = client.decode_token(user).unwrap();
 
     if user_uid != claim.sub {
-        return Err(AppError::CustomError("invalid uid".into()));
+        return Err(AppError::CustomError(format!(
+            "invalid uid {:?}, {:?}",
+            user_uid, claim.sub
+        )));
     }
 
     let confirded = state.store.is_user_uid_confirmed(user_uid.as_ref()).await?;
 
-    if confirded == true {
+    if confirded {
         return Err(AppError::CustomError(
             "user's uid has been confirmed".into(),
         ));

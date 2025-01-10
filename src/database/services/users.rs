@@ -213,16 +213,16 @@ impl Storage {
             .await?;
 
         if let Some(user) = user {
-            if user.email_confirmed == true {
+            if user.email_confirmed {
                 Ok(true)
             } else {
-                return Err(AppError::UserUnExisted(format!(
-                    "User: {} already exists",
-                    user_email
-                )));
+                Ok(false)
             }
         } else {
-            Ok(false)
+            Err(AppError::UserUnExisted(format!(
+                        "User: {} not exists",
+                        user_email
+            )))
         }
     }
 
@@ -251,16 +251,13 @@ impl Storage {
             .await?;
 
         if let Some(user) = user {
-            if user.uid_confirmed == true {
+            if user.uid_confirmed {
                 Ok(true)
             } else {
-                return Err(AppError::UserUnExisted(format!(
-                    "User: {} already exists",
-                    user_uid
-                )));
+            Ok(false)
             }
         } else {
-            Ok(false)
+            Err(AppError::UserUnExisted(format!("User: {} not exists", user_uid)))
         }
     }
 
